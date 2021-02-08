@@ -91,7 +91,7 @@ static void bc_put(struct bio_container *bc, unsigned int doneio)
 	long elapsed;
 
 	if (atomic_dec_and_test(&bc->bc_holdcount)) {
-		if (bc->bc_dmc->mode == CACHE_MODE_WB)
+		if (bc->bc_dmc->mode == CACHE_MODE_WB || bc->bc_dmc->mode == CACHE_MODE_WO)
 			eio_release_io_resources(bc->bc_dmc, bc);
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0))
 		bc->bc_bio->bi_iter.bi_size = 0;
@@ -675,7 +675,7 @@ int eio_clean_thread_proc(void *context)
 	index_t index;
 
 	/* Sync makes sense only for writeback cache */
-	EIO_ASSERT(dmc->mode == CACHE_MODE_WB);
+	EIO_ASSERT(dmc->mode == CACHE_MODE_WB || dmc->mode == CACHE_MODE_WO);
 
 	dmc->clean_thread_running = 1;
 
@@ -1635,7 +1635,7 @@ void eio_comply_dirty_thresholds(struct cache_c *dmc, index_t set)
 		return;
 	}
 
-	if (AUTOCLEAN_THRESHOLD_CROSSED(dmc) || (dmc->mode != CACHE_MODE_WB))
+	if (AUTOCLEAN_THRESHOLD_CROSSED(dmc) || (dmc->mode != CACHE_MODE_WB && dmc->mode != CACHE_MODE_WO))
 		return;
 
 	if (set != -1)
@@ -1945,7 +1945,7 @@ eio_cached_write(struct cache_c *dmc, struct eio_bio *ebio, int rw_flags)
 	 */
 
 	/* Possible only in writeback caching mode */
-	EIO_ASSERT(dmc->mode == CACHE_MODE_WB);
+	EIO_ASSERT(dmc->mode == CACHE_MODE_WB || dmc->mode == CACHE_MODE_WO);
 
 	/*
 	 * TBD
@@ -2608,7 +2608,7 @@ int eio_map(struct cache_c *dmc, struct request_queue *rq, struct bio *bio)
 
 	/* WB cache will never be in degraded mode. */
 	if (unlikely(CACHE_DEGRADED_IS_SET(dmc))) {
-		EIO_ASSERT(dmc->mode != CACHE_MODE_WB);
+		EIO_ASSERT(dmc->mode != CACHE_MODE_WB && dmc->mode != CACHE_MODE_WO);
 		force_uncached = 1;
 	} else if (data_dir == WRITE && dmc->mode == CACHE_MODE_RO) {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0))
@@ -2660,7 +2660,7 @@ int eio_map(struct cache_c *dmc, struct request_queue *rq, struct bio *bio)
 #endif 
 	residual_biovec = 0;
 
-	if (dmc->mode == CACHE_MODE_WB) {
+	if (dmc->mode == CACHE_MODE_WB || dmc->mode == CACHE_MODE_WO) {
 		int ret;
 		/*
 		 * For writeback, the app I/O and the clean I/Os
@@ -2733,7 +2733,7 @@ int eio_map(struct cache_c *dmc, struct request_queue *rq, struct bio *bio)
 	 *      the processing of the ebios internally.
 	 */
 	if (force_uncached) {
-		EIO_ASSERT(dmc->mode != CACHE_MODE_WB);
+		EIO_ASSERT(dmc->mode != CACHE_MODE_WB && dmc->mode != CACHE_MODE_WO);
 		if (data_dir == READ)
 			atomic64_inc(&dmc->eio_stats.uncached_reads);
 		else
@@ -2964,7 +2964,7 @@ static int eio_write_peek(struct cache_c *dmc, struct eio_bio *ebio)
 	}
 
 out:
-	if ((retval == 1) && (dmc->mode == CACHE_MODE_WB) &&
+	if ((retval == 1) && (dmc->mode == CACHE_MODE_WB || dmc->mode == CACHE_MODE_WO) &&
 	    (cstate != ALREADY_DIRTY))
 		ebio->eb_bc->bc_mdwait++;
 
@@ -3043,7 +3043,7 @@ eio_write(struct cache_c *dmc, struct bio_container *bc, struct eio_bio *ebegin)
 	struct eio_bio *ebio;
 	struct eio_bio *enext;
 
-	if ((dmc->mode != CACHE_MODE_WB) ||
+	if ((dmc->mode != CACHE_MODE_WB && dmc->mode != CACHE_MODE_WO) ||
 	    (dmc->sysctl_active.do_clean & EIO_CLEAN_KEEP))
 		ucwrite = 1;
 
@@ -3147,7 +3147,7 @@ void eio_clean_all(struct cache_c *dmc)
 {
 	unsigned long flags = 0;
 
-	EIO_ASSERT(dmc->mode == CACHE_MODE_WB);
+	EIO_ASSERT(dmc->mode == CACHE_MODE_WB || dmc->mode == CACHE_MODE_WO);
 	for (atomic_set(&dmc->clean_index, 0);
 	     (atomic_read(&dmc->clean_index) <
 	      (s32)(dmc->size >> dmc->consecutive_shift))

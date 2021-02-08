@@ -226,6 +226,7 @@ extern mempool_t *_job_pool;
 #define CACHE_MODE_WB           1
 #define CACHE_MODE_RO           2
 #define CACHE_MODE_WT           3
+#define CACHE_MODE_WO           4
 #define CACHE_MODE_FIRST        CACHE_MODE_WB
 #define CACHE_MODE_LAST         CACHE_MODE_WT
 #define CACHE_MODE_DEFAULT      CACHE_MODE_WT
@@ -732,7 +733,7 @@ struct cache_c {
 	u_int32_t block_mask;           /* Cache block mask */
 	u_int32_t consecutive_shift;    /* Consecutive blocks size in bits */
 	u_int32_t persistence;          /* Create | Force create | Reload */
-	u_int32_t mode;                 /* CACHE_MODE_{WB, RO, WT} */
+	u_int32_t mode;                 /* CACHE_MODE_{WB, RO, WT, WO} */
 	u_int32_t cold_boot;            /* Cache should be started as cold after boot */
 	u_int32_t bio_nr_pages;         /* number of hardware sectors supported by SSD in terms of PAGE_SIZE */
 

@@ -1032,7 +1032,7 @@ static int eio_md_load(struct cache_c *dmc)
 			goto free_header;
 		}
 
-		if (le32_to_cpu(header->sbf.mode) == CACHE_MODE_WB) {
+		if (le32_to_cpu(header->sbf.mode) == CACHE_MODE_WB || le32_to_cpu(header->sbf.mode) == CACHE_MODE_WO ) {
 			pr_err("md_load: Can't enable write-back cache %s" \
 			       " with newer superblock version.",
 			       header->sbf.cache_name);
@@ -1300,9 +1300,9 @@ static int eio_md_load(struct cache_c *dmc)
 	}
 
 	/*
-	 * If the cache contains dirty data, the only valid mode is write back.
+	 * If the cache contains dirty data, the only valid mode is write back and write only.
 	 */
-	if (dirty_loaded && dmc->mode != CACHE_MODE_WB) {
+	if (dirty_loaded && dmc->mode != CACHE_MODE_WB && dmc->mode != CACHE_MODE_WO) {
 		vfree((void *)EIO_CACHE(dmc));
 		pr_err
 			("md_load: Cannot use %s mode because dirty data exists in the cache",
@@ -1661,7 +1661,7 @@ int eio_cache_create(struct cache_rec_short *cache)
 		pr_info("Setting mode to %s ",
 			(dmc->mode == CACHE_MODE_WB) ? "write back" :
 			((dmc->mode == CACHE_MODE_RO) ? "read only" :
-			 "write through"));
+             ((dmc->mode == CACHE_MODE_WO) ? "write only" : "write through")));
 	}
 
 	/* eio_policy_init() is already called from within eio_md_load() */
@@ -1823,7 +1823,7 @@ init:
 	}
 	eio_policy_lru_pushblks(dmc->policy_ops);
 
-	if (dmc->mode == CACHE_MODE_WB) {
+	if (dmc->mode == CACHE_MODE_WB || dmc->mode == CACHE_MODE_WO) {
 		error = eio_allocate_wb_resources(dmc);
 		if (error) {
 			vfree((void *)dmc->cache_sets);
@@ -1903,7 +1903,7 @@ init:
 
 bad6:
 	eio_procfs_dtr(dmc);
-	if (dmc->mode == CACHE_MODE_WB) {
+	if (dmc->mode == CACHE_MODE_WB || dmc->mode == CACHE_MODE_WO) {
 		eio_stop_async_tasks(dmc);
 		eio_free_wb_resources(dmc);
 	}
@@ -2180,7 +2180,7 @@ int eio_ctr_ssd_add(struct cache_c *dmc, char *dev)
 	}
 
 	r = eio_md_create(dmc, /* force */ 1, /* cold */
-			  (dmc->mode != CACHE_MODE_WB));
+			  (dmc->mode != CACHE_MODE_WB && dmc->mode != CACHE_MODE_WO));
 	if (r) {
 		pr_err
 			("ctr_ssd_add: Failed to create md, continuing in degraded mode");
@@ -2194,7 +2194,7 @@ int eio_ctr_ssd_add(struct cache_c *dmc, char *dev)
 		goto out;
 	}
 	eio_policy_lru_pushblks(dmc->policy_ops);
-	if (dmc->mode != CACHE_MODE_WB)
+	if (dmc->mode != CACHE_MODE_WB && dmc->mode != CACHE_MODE_WO)
 		/* Cold cache will reset the stats */
 		memset(&dmc->eio_stats, 0, sizeof(dmc->eio_stats));
 
@@ -2226,7 +2226,7 @@ void eio_stop_async_tasks(struct cache_c *dmc)
 
 	dmc->sysctl_active.fast_remove = CACHE_FAST_REMOVE_IS_SET(dmc) ? 1 : 0;
 
-	if (dmc->mode == CACHE_MODE_WB) {
+	if (dmc->mode == CACHE_MODE_WB || dmc->mode != CACHE_MODE_WO) {
 		/*
 		 * Prevent new I/Os to schedule the time based cleaning.
 		 * Cancel existing delayed work
@@ -2239,7 +2239,7 @@ void eio_stop_async_tasks(struct cache_c *dmc)
 int eio_start_clean_thread(struct cache_c *dmc)
 {
 	EIO_ASSERT(dmc->clean_thread == NULL);
-	EIO_ASSERT(dmc->mode == CACHE_MODE_WB);
+	EIO_ASSERT(dmc->mode == CACHE_MODE_WB || dmc->mode == CACHE_MODE_WO);
 	EIO_ASSERT(dmc->clean_thread_running == 0);
 	EIO_ASSERT(!(dmc->sysctl_active.do_clean & EIO_CLEAN_START));
 

@@ -302,7 +302,7 @@ void eio_suspend_caching(struct cache_c *dmc, enum dev_notifier note)
 {
 
 	spin_lock_irqsave(&dmc->cache_spin_lock, dmc->cache_spin_lock_flags);
-	if (dmc->mode != CACHE_MODE_WB && CACHE_FAILED_IS_SET(dmc)) {
+	if (dmc->mode != CACHE_MODE_WB && dmc->mode != CACHE_MODE_WO && CACHE_FAILED_IS_SET(dmc)) {
 		pr_err("suspend caching: Cache "
 		       "%s is already in FAILED state\n", dmc->cache_name);
 		spin_unlock_irqrestore(&dmc->cache_spin_lock,
@@ -322,7 +322,7 @@ void eio_suspend_caching(struct cache_c *dmc, enum dev_notifier note)
 			"Cache \"%s\" is in Failed mode.\n", dmc->cache_name);
 		break;
 	case NOTIFY_SSD_REMOVED:
-		if (dmc->mode == CACHE_MODE_WB) {
+		if (dmc->mode == CACHE_MODE_WB || dmc->mode == CACHE_MODE_WO) {
 			/*
 			 * For writeback
 			 * - Cache should never be in degraded mode
@@ -390,7 +390,7 @@ void eio_resume_caching(struct cache_c *dmc, char *dev)
 	}
 
 	/* sanity check for writeback */
-	if (dmc->mode == CACHE_MODE_WB) {
+	if (dmc->mode == CACHE_MODE_WB || dmc->mode == CACHE_MODE_WO) {
 		if (!CACHE_FAILED_IS_SET(dmc) || CACHE_SRC_IS_ABSENT(dmc) ||
 		    CACHE_SSD_ADD_INPROG_IS_SET(dmc)) {
 			pr_debug("eio_resume_caching: Cache not in Failed "
@@ -432,7 +432,7 @@ void eio_resume_caching(struct cache_c *dmc, char *dev)
 
 	spin_lock_irqsave(&dmc->cache_spin_lock, dmc->cache_spin_lock_flags);
 	dmc->eio_errors.no_cache_dev = 0;
-	if (dmc->mode != CACHE_MODE_WB)
+	if (dmc->mode != CACHE_MODE_WB && dmc->mode != CACHE_MODE_WO)
 		dmc->cache_flags &= ~CACHE_FLAGS_DEGRADED;
 	else
 		dmc->cache_flags &= ~CACHE_FLAGS_FAILED;

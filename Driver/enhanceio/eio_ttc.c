@@ -256,7 +256,7 @@ int eio_ttc_deactivate(struct cache_c *dmc, int force)
 		goto deactivate;
 
 	/* Process and wait for nr_dirty to drop to zero */
-	if (dmc->mode == CACHE_MODE_WB) {
+	if (dmc->mode == CACHE_MODE_WB || dmc->mode == CACHE_MODE_WO) {
 		if (!CACHE_FAILED_IS_SET(dmc)) {
 			ret = eio_finish_nrdirty(dmc);
 			if (ret) {
@@ -1077,7 +1077,7 @@ int eio_cache_edit(char *cache_name, u_int32_t mode, u_int32_t policy)
 			       dmc->cache_spin_lock_flags);
 	old_time_thresh = dmc->sysctl_active.time_based_clean_interval;
 
-	if (dmc->mode == CACHE_MODE_WB) {
+	if (dmc->mode == CACHE_MODE_WB || dmc->mode == CACHE_MODE_WO) {
 		if (CACHE_FAILED_IS_SET(dmc)) {
 			pr_err
 				("cache_edit:  Can not proceed with edit for Failed cache \"%s\".",
@@ -1090,7 +1090,7 @@ int eio_cache_edit(char *cache_name, u_int32_t mode, u_int32_t policy)
 	}
 
 	/* Wait for nr_dirty to drop to zero */
-	if (dmc->mode == CACHE_MODE_WB && mode != CACHE_MODE_WB) {
+	if ((dmc->mode == CACHE_MODE_WB || dmc->mode == CACHE_MODE_WO) && (mode != CACHE_MODE_WB && mode != CACHE_MODE_WO)) {
 		if (CACHE_FAILED_IS_SET(dmc)) {
 			pr_err
 				("cache_edit:  Can not proceed with edit for Failed cache \"%s\".",
@@ -1171,7 +1171,7 @@ out:
 	dmc->sysctl_active.do_clean &= ~(EIO_CLEAN_START | EIO_CLEAN_KEEP);
 
 	/* Restart async-task for "WB" cache. */
-	if ((dmc->mode == CACHE_MODE_WB) && (restart_async_task == 1)) {
+	if ((dmc->mode == CACHE_MODE_WB || dmc->mode == CACHE_MODE_WO) && (restart_async_task == 1)) {
 		pr_debug("cache_edit: Restarting the clean_thread.\n");
 		EIO_ASSERT(dmc->clean_thread == NULL);
 		ret = eio_start_clean_thread(dmc);
@@ -1207,7 +1207,7 @@ static int eio_mode_switch(struct cache_c *dmc, u_int32_t mode)
 	pr_debug("eio_mode_switch: mode switch from %u to %u\n",
 		 dmc->mode, mode);
 
-	if (mode == CACHE_MODE_WB) {
+	if (mode == CACHE_MODE_WB || mode == CACHE_MODE_WO) {
 		orig_mode = dmc->mode;
 		dmc->mode = mode;
 

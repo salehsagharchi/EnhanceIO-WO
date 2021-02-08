@@ -195,9 +195,9 @@ eio_clean_sysctl(struct ctl_table *table, int write, void __user *buffer,
 	if (write) {
 		/* Do sanity check */
 
-		if (dmc->mode != CACHE_MODE_WB) {
+		if (dmc->mode != CACHE_MODE_WB && dmc->mode != CACHE_MODE_WO) {
 			/* do_clean is only valid for writeback cache */
-			pr_err("do_clean is only valid for writeback cache");
+			pr_err("do_clean is only valid for writeback and writeonly cache");
 			return -EINVAL;
 		}
 
@@ -282,9 +282,9 @@ eio_dirty_high_threshold_sysctl(struct ctl_table *table, int write,
 
 		/* do sanity check */
 
-		if (dmc->mode != CACHE_MODE_WB) {
+		if (dmc->mode != CACHE_MODE_WB && dmc->mode != CACHE_MODE_WO) {
 			pr_err
-				("dirty_high_threshold is only valid for writeback cache");
+				("dirty_high_threshold is only valid for writeback and wo cache");
 			return -EINVAL;
 		}
 
@@ -364,9 +364,9 @@ eio_dirty_low_threshold_sysctl(struct ctl_table *table, int write,
 
 		/* do sanity check */
 
-		if (dmc->mode != CACHE_MODE_WB) {
+		if (dmc->mode != CACHE_MODE_WB  && dmc->mode != CACHE_MODE_WO) {
 			pr_err
-				("dirty_low_threshold is valid for only writeback cache");
+				("dirty_low_threshold is valid for only writeback and wo cache");
 			return -EINVAL;
 		}
 
@@ -453,9 +453,9 @@ eio_dirty_set_high_threshold_sysctl(struct ctl_table *table, int write,
 
 		/* do sanity check */
 
-		if (dmc->mode != CACHE_MODE_WB) {
+		if (dmc->mode != CACHE_MODE_WB && dmc->mode != CACHE_MODE_WO) {
 			pr_err
-				("dirty_set_high_threshold is valid only for writeback cache");
+				("dirty_set_high_threshold is valid only for writeback and wo cache");
 			return -EINVAL;
 		}
 
@@ -539,9 +539,9 @@ eio_dirty_set_low_threshold_sysctl(struct ctl_table *table, int write,
 
 		/* do sanity check */
 
-		if (dmc->mode != CACHE_MODE_WB) {
+		if (dmc->mode != CACHE_MODE_WB && dmc->mode != CACHE_MODE_WO) {
 			pr_err
-				("dirty_set_low_threshold is valid only for writeback cache");
+				("dirty_set_low_threshold is valid only for writeback and wo cache");
 			return -EINVAL;
 		}
 
@@ -631,9 +631,9 @@ eio_autoclean_threshold_sysctl(struct ctl_table *table, int write,
 
 		/* do sanity check */
 
-		if (dmc->mode != CACHE_MODE_WB) {
+		if (dmc->mode != CACHE_MODE_WB && dmc->mode != CACHE_MODE_WO) {
 			pr_err
-				("autoclean_threshold is valid only for writeback cache");
+				("autoclean_threshold is valid only for writeback and wo cache");
 			return -EINVAL;
 		}
 
@@ -707,9 +707,9 @@ eio_time_based_clean_interval_sysctl(struct ctl_table *table, int write,
 
 		/* do sanity check */
 
-		if (dmc->mode != CACHE_MODE_WB) {
+		if (dmc->mode != CACHE_MODE_WB  && dmc->mode != CACHE_MODE_WO) {
 			pr_err
-				("time_based_clean_interval is valid only for writeback cache");
+				("time_based_clean_interval is valid only for writeback and wo cache");
 			return -EINVAL;
 		}
 
@@ -866,7 +866,7 @@ eio_control_sysctl(struct ctl_table *table, int write, void __user *buffer,
 				pr_info("Invalidate API not registered");
 			break;
 		case CACHE_FAST_REMOVE_ON:
-			if (dmc->mode != CACHE_MODE_WB) {
+			if (dmc->mode != CACHE_MODE_WB && dmc->mode != CACHE_MODE_WO) {
 				spin_lock_irqsave(&dmc->cache_spin_lock,
 						  dmc->cache_spin_lock_flags);
 				dmc->cache_flags |= CACHE_FLAGS_FAST_REMOVE;
@@ -893,7 +893,7 @@ eio_control_sysctl(struct ctl_table *table, int write, void __user *buffer,
 			}
 			break;
 		case CACHE_FAST_REMOVE_OFF:
-			if (dmc->mode != CACHE_MODE_WB) {
+			if (dmc->mode != CACHE_MODE_WB && dmc->mode != CACHE_MODE_WO) {
 				spin_lock_irqsave(&dmc->cache_spin_lock,
 						  dmc->cache_spin_lock_flags);
 				dmc->cache_flags &= ~CACHE_FLAGS_FAST_REMOVE;
@@ -1278,7 +1278,7 @@ void eio_procfs_ctr(struct cache_c *dmc)
 	kfree(s);
 
 	eio_sysctl_register_common(dmc);
-	if (dmc->mode == CACHE_MODE_WB)
+	if (dmc->mode == CACHE_MODE_WB || dmc->mode == CACHE_MODE_WO )
 		eio_sysctl_register_writeback(dmc);
 	if (CACHE_INVALIDATE_IS_SET(dmc))
 		eio_sysctl_register_invalidate(dmc);
