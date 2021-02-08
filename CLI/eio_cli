@@ -223,10 +223,10 @@ def get_caches_list():
 def sanity(hdd, ssd):
 	# Performs a very basic regression of operations			
 				
-	modes = {3:"Write Through", 1:"Write Back", 2:"Read Only",0:"N/A"}
+	modes = {4: "Write Only", 3:"Write Through", 1:"Write Back", 2:"Read Only",0:"N/A"}
 	policies = {3:"rand", 1:"fifo", 2:"lru", 0:"N/A"}		
 	blksizes = {"4096":4096, "2048":2048, "8192":8192,"":0}	
-	for mode in ["wb","wt","ro"]:
+	for mode in ["wo", "wb","wt","ro"]:
 		for policy in ["rand","fifo","lru"]:
 			for blksize in ["4096","2048","8192"]:
 				cache = Cache_rec(name = "test_cache", src_name = hdd,\
@@ -261,7 +261,7 @@ class Cache_rec(Structure):
 		     flags=0, policy="", mode="", persistence=0, cold_boot="",\
 		     blksize="", assoc=""): 
 	
-		modes = {"wt":3,"wb":1,"ro":2,"":0}
+		modes = {"wo":4, "wt":3,"wb":1,"ro":2,"":0}
 		policies = {"rand":3,"fifo":1, "lru":2,"":0}
 		blksizes = {"4096":4096, "2048":2048, "8192":8192,"":0}	
 		associativity = {2048:128, 4096:256, 8192:512,0:0}
@@ -284,7 +284,7 @@ class Cache_rec(Structure):
 	def print_info(self):
 	
 		# Display Cache info 
-		modes = {3:"Write Through", 1:"Write Back", 2:"Read Only",0:"N/A"}
+		modes = {4:"Write Only", 3:"Write Through", 1:"Write Back", 2:"Read Only",0:"N/A"}
 		policies = {3:"rand", 1:"fifo", 2:"lru", 0:"N/A"}
 
 		print "Cache Name       : " + self.name 
@@ -410,7 +410,7 @@ class Cache_rec(Structure):
 		print source_match_expr
 		cache_match_expr = make_udev_match_expr(self.ssd_name, self.name)
 		print cache_match_expr
-		modes = {3:"wt", 1:"wb", 2:"ro",0:"N/A"}
+		modes = {4:"wo", 3:"wt", 1:"wb", 2:"ro",0:"N/A"}
 		policies = {3:"rand", 1:"fifo", 2:"lru", 0:"N/A"}
 	
 		try: 	
@@ -508,7 +508,7 @@ def create_parser():
 					cache policy or mode or both")
 	parser_edit.add_argument("-c", action="store",  dest="cache",required=True)
 	parser_edit.add_argument("-m", action="store", dest="mode", \
-			choices=["wb","wt","ro"], help="cache mode",default="")
+			choices=["wo", "wb","wt","ro"], help="cache mode",default="")
 	parser_edit.add_argument("-p", action="store", dest="policy", \
 				choices=["rand","fifo","lru"], help="cache \
 				replacement policy",default="") 
@@ -532,7 +532,7 @@ def create_parser():
 				   choices=["rand","fifo","lru"],\
 				   help="cache replacement policy",default="lru")
 	parser_create.add_argument("-m", action="store", dest="mode",\
-				   choices=["wb","wt","ro"],\
+				   choices=["wo", "wb","wt","ro"],\
 				   help="cache mode",default="wt")
 	parser_create.add_argument("-b", action="store", dest="blksize",\
 				   choices=["2048","4096","8192"],\
@@ -549,7 +549,7 @@ def create_parser():
 				   choices=["rand","fifo","lru"],\
 				   help="cache replacement policy",default="lru")
 	parser_enable.add_argument("-m", action="store", dest="mode",\
-				   choices=["wb","wt","ro"],\
+				   choices=["wo", "wb","wt","ro"],\
 				   help="cache mode",default="wt")
 	parser_enable.add_argument("-b", action="store", dest="blksize",\
 				   choices=["2048","4096","8192"],\
@@ -597,6 +597,7 @@ def main():
 		return cache.create()
 
 	elif sys.argv[1] == "info":
+	    print "JAVANMARDI #### SAGHARCHI : v1"
 		cache_list = get_caches_list()
 		if not cache_list:		
 			print "No caches Found"
