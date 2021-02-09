@@ -597,7 +597,7 @@ def main():
 		return cache.create()
 
 	elif sys.argv[1] == "info":
-	    print "JAVANMARDI #### SAGHARCHI : v1"
+		print "JAVANMARDI #### SAGHARCHI : v1"
 		cache_list = get_caches_list()
 		if not cache_list:		
 			print "No caches Found"
