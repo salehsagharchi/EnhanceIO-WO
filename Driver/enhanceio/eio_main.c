@@ -2783,7 +2783,7 @@ static int eio_read_peek(struct cache_c *dmc, struct eio_bio *ebio)
 
 	cstate = EIO_CACHE_STATE_GET(dmc, index);
 
-	if ((cstate & (BLOCK_IO_INPROG | QUEUED)) || (dmc->mode == CACHE_MODE_WO))
+	if ((cstate & (BLOCK_IO_INPROG | QUEUED)))
 		/*
 		 * We found a valid or invalid block but an io is on, so we can't
 		 * proceed. Don't invalidate it. This implies that we'll
