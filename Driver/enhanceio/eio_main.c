@@ -2783,7 +2783,7 @@ static int eio_read_peek(struct cache_c *dmc, struct eio_bio *ebio)
 
 	cstate = EIO_CACHE_STATE_GET(dmc, index);
 
-	if (cstate & (BLOCK_IO_INPROG | QUEUED))
+	if ((cstate & (BLOCK_IO_INPROG | QUEUED)) || (dmc->mode == CACHE_MODE_WO))
 		/*
 		 * We found a valid or invalid block but an io is on, so we can't
 		 * proceed. Don't invalidate it. This implies that we'll
@@ -2993,51 +2993,48 @@ eio_read(struct cache_c *dmc, struct bio_container *bc, struct eio_bio *ebegin)
 	bc->bc_dir = UNCACHED_READ;
 	ebio = ebegin;
 
-    if (dmc->mode == CACHE_MODE_WO) {
+
+    while (ebio) {
+        enext = ebio->eb_next;
+        if (eio_read_peek(dmc, ebio) == 0)
+            ucread = 1;
+        ebio = enext;
+    }
+
+    if (ucread) {
+        /*
+         * Uncached read.
+         * Start HDD I/O. Once that is finished
+         * readfill or dirty block re-read would start
+         */
         atomic64_inc(&dmc->eio_stats.uncached_reads);
         eio_disk_io(dmc, bc->bc_bio, ebegin, bc, 0);
     } else {
+        /* Cached read. Serve the read from SSD */
+
+        /*
+         * Pass all orig bio flags except UNPLUG.
+         * Unplug in the end if flagged.
+         */
+        int rw_flags;
+
+        rw_flags = 0;
+
+        bc->bc_dir = CACHED_READ;
+        ebio = ebegin;
+
+        VERIFY_BIO_FLAGS(ebio);
+
+        EIO_ASSERT((rw_flags & 1) == READ);
         while (ebio) {
             enext = ebio->eb_next;
-            if (eio_read_peek(dmc, ebio) == 0)
-                ucread = 1;
+            ebio->eb_iotype = EB_MAIN_IO;
+
+            eio_cached_read(dmc, ebio, rw_flags);
             ebio = enext;
         }
-
-        if (ucread) {
-            /*
-             * Uncached read.
-             * Start HDD I/O. Once that is finished
-             * readfill or dirty block re-read would start
-             */
-            atomic64_inc(&dmc->eio_stats.uncached_reads);
-            eio_disk_io(dmc, bc->bc_bio, ebegin, bc, 0);
-        } else {
-            /* Cached read. Serve the read from SSD */
-
-            /*
-             * Pass all orig bio flags except UNPLUG.
-             * Unplug in the end if flagged.
-             */
-            int rw_flags;
-
-            rw_flags = 0;
-
-            bc->bc_dir = CACHED_READ;
-            ebio = ebegin;
-
-            VERIFY_BIO_FLAGS(ebio);
-
-            EIO_ASSERT((rw_flags & 1) == READ);
-            while (ebio) {
-                enext = ebio->eb_next;
-                ebio->eb_iotype = EB_MAIN_IO;
-
-                eio_cached_read(dmc, ebio, rw_flags);
-                ebio = enext;
-            }
-        }
     }
+
 
 
 }
