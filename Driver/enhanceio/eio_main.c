@@ -2992,46 +2992,54 @@ eio_read(struct cache_c *dmc, struct bio_container *bc, struct eio_bio *ebegin)
 
 	bc->bc_dir = UNCACHED_READ;
 	ebio = ebegin;
-	while (ebio) {
-		enext = ebio->eb_next;
-		if (eio_read_peek(dmc, ebio) == 0)
-			ucread = 1;
-		ebio = enext;
-	}
 
-	if (ucread || dmc->mode == CACHE_MODE_WO) {
-		/*
-		 * Uncached read.
-		 * Start HDD I/O. Once that is finished
-		 * readfill or dirty block re-read would start
-		 */
-		atomic64_inc(&dmc->eio_stats.uncached_reads);
-		eio_disk_io(dmc, bc->bc_bio, ebegin, bc, 0);
-	} else {
-		/* Cached read. Serve the read from SSD */
+    if (dmc->mode == CACHE_MODE_WO) {
+        atomic64_inc(&dmc->eio_stats.uncached_reads);
+        eio_disk_io(dmc, bc->bc_bio, ebegin, bc, 0);
+    } else {
+        while (ebio) {
+            enext = ebio->eb_next;
+            if (eio_read_peek(dmc, ebio) == 0)
+                ucread = 1;
+            ebio = enext;
+        }
 
-		/*
-		 * Pass all orig bio flags except UNPLUG.
-		 * Unplug in the end if flagged.
-		 */
-		int rw_flags;
+        if (ucread) {
+            /*
+             * Uncached read.
+             * Start HDD I/O. Once that is finished
+             * readfill or dirty block re-read would start
+             */
+            atomic64_inc(&dmc->eio_stats.uncached_reads);
+            eio_disk_io(dmc, bc->bc_bio, ebegin, bc, 0);
+        } else {
+            /* Cached read. Serve the read from SSD */
 
-		rw_flags = 0;
+            /*
+             * Pass all orig bio flags except UNPLUG.
+             * Unplug in the end if flagged.
+             */
+            int rw_flags;
 
-		bc->bc_dir = CACHED_READ;
-		ebio = ebegin;
+            rw_flags = 0;
 
-		VERIFY_BIO_FLAGS(ebio);
+            bc->bc_dir = CACHED_READ;
+            ebio = ebegin;
 
-		EIO_ASSERT((rw_flags & 1) == READ);
-		while (ebio) {
-			enext = ebio->eb_next;
-			ebio->eb_iotype = EB_MAIN_IO;
+            VERIFY_BIO_FLAGS(ebio);
 
-			eio_cached_read(dmc, ebio, rw_flags);
-			ebio = enext;
-		}
-	}
+            EIO_ASSERT((rw_flags & 1) == READ);
+            while (ebio) {
+                enext = ebio->eb_next;
+                ebio->eb_iotype = EB_MAIN_IO;
+
+                eio_cached_read(dmc, ebio, rw_flags);
+                ebio = enext;
+            }
+        }
+    }
+
+
 }
 
 /* Top level write function called from eio_map */
