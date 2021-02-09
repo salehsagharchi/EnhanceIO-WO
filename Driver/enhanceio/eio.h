@@ -228,7 +228,7 @@ extern mempool_t *_job_pool;
 #define CACHE_MODE_WT           3
 #define CACHE_MODE_WO           4
 #define CACHE_MODE_FIRST        CACHE_MODE_WB
-#define CACHE_MODE_LAST         CACHE_MODE_WT
+#define CACHE_MODE_LAST         CACHE_MODE_WO
 #define CACHE_MODE_DEFAULT      CACHE_MODE_WT
 
 #define DEV_PATHLEN             128
