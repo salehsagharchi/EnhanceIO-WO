@@ -2999,7 +2999,7 @@ eio_read(struct cache_c *dmc, struct bio_container *bc, struct eio_bio *ebegin)
 		ebio = enext;
 	}
 
-	if (ucread) {
+	if (ucread || dmc->mode == CACHE_MODE_WO) {
 		/*
 		 * Uncached read.
 		 * Start HDD I/O. Once that is finished
