@@ -1216,7 +1216,7 @@ static int eio_mode_switch(struct cache_c *dmc, u_int32_t mode)
 			dmc->mode = orig_mode;
 			goto out;
 		}
-	} else if (dmc->mode == CACHE_MODE_WB) {
+	} else if (dmc->mode == CACHE_MODE_WB || dmc->mode == CACHE_MODE_WO) {
 		eio_free_wb_resources(dmc);
 		dmc->mode = mode;
 	} else {                /* (RO -> WT) or (WT -> RO) */
