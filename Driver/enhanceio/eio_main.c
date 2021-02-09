@@ -2740,9 +2740,13 @@ int eio_map(struct cache_c *dmc, struct request_queue *rq, struct bio *bio)
 			atomic64_inc(&dmc->eio_stats.uncached_writes);
 		eio_disk_io(dmc, bio, ebegin, bc, 1);
 	} else if (data_dir == READ) {
-
-		/* read io processing */
-		eio_read(dmc, bc, ebegin);
+        if (dmc->mode == CACHE_MODE_WO) {
+            atomic64_inc(&dmc->eio_stats.uncached_reads);
+            eio_disk_io(dmc, bio, ebegin, bc, 1);
+        } else {
+            /* read io processing */
+            eio_read(dmc, bc, ebegin);
+        }
 	} else
 		/* write io processing */
 		eio_write(dmc, bc, ebegin);
